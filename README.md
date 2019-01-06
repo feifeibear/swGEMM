@@ -39,12 +39,12 @@ python ./show_raw_data.py
 4. When we use ./build/libswBLASlib.a in other code, accessing MBW map will cause unpredicatable bug! Maybe allocate a large array
 in stack space is not supported very well.
 
-##Warning
+## Warning
 rpcc time is different with timer for eslapse bwteen athread spawn and join.
 if you use rpcc to get time, you will get wrong time in MPE.
 Maybe athread time is large in small case.
 
-#Author
-Jiarui Fang [THU and NSCCWX] \<br>
+## Author
+Jiarui Fang [THU and NSCCWX] <\br>
 fang_jiarui@163.com
 
