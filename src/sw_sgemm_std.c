@@ -14,9 +14,10 @@
 extern void SLAVE_FUN(FJR_blas_sgemm)();
 extern void SLAVE_FUN(FJR_blas_sgemm_float)();
 extern void SLAVE_FUN(FJR_blas_sgemm_trans_implicit)();
-//output information in this function, use for debug, may get wrong results
+//get information in this function, use for debug, may get wrong results
 extern void SLAVE_FUN(FJR_blas_sgemm_trans_test_perfmdl)();
 extern void SLAVE_FUN(FJR_blas_sgemm_trans_dma_full_pipeline)();
+
 extern void SLAVE_FUN(FJR_zeropad_matrix());
 extern void SLAVE_FUN(FJR_depad_matrix());
 extern void SLAVE_FUN(sgemm_dma)();
@@ -138,7 +139,7 @@ void sw_cblas_sgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE Tra
     float est_best_time = 1000000;
     int real_blkN, real_blkM, real_blkK;
     for (blkN = 128; blkN <= N && blkN <= 2048; blkN += 128)
-      for (blkM = 64; blkM <= M && blkM <= 2048; blkM += 32)
+      for (blkM = 32; blkM <= M && blkM <= 2048; blkM += 32)
         for (blkK = 32; blkK <= K && blkK <= 2048; blkK += 32) 
     {
           int ldm_use = sizeof(double)*(blkN*blkK*2 + 
@@ -222,7 +223,7 @@ void sw_cblas_sgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE Tra
             double T_init_dma = (1.0*blkN*blkK*sizeof(float)/1e6/MBW_map[bsizeN/16-1] + 
               1.0*blkM*blkK*sizeof(float)/1e6/MBW_map[bsizeM/16-1]);
             float T_compute = estimite_compute_time(blkM, blkN, blkK, M, N, K);
-            float est_time = MAX(T_compute, T_dma);
+            double est_time = MAX(T_compute, T_dma) + T_init_dma;
 
             if(est_time < est_best_time) {
               est_best_time = est_time;

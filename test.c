@@ -309,8 +309,8 @@ int main(int argc, char **argv) {
   K = atoi(argv[2]);
   N = atoi(argv[3]);
   //test_sw_sgemm_small(M, N, K);
-  //test_sw_sgemm_Anotrans_std(M, N, K);
-  test_sw_sgemm_Atrans_std(M, N, K);
+  test_sw_sgemm_Anotrans_std(M, N, K);
+  //test_sw_sgemm_Atrans_std(M, N, K);
   //test_sw_sgemm_Atrans_nopad_std(M, N, K);
   return 0;
 }
