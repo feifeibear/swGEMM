@@ -1,0 +1,48 @@
+cmake_minimum_required(VERSION 2.8.5 FATAL_ERROR)
+project (swBLAS)
+enable_language(ASM)
+set (swBLAS_VERSION_MAJOR 1)
+set (swBLAS_VERSION_MINOR 0)
+
+
+set(CMAKE_C_COMPILER "sw5cc.new")
+set(CMAKE_CXX_COMPILER "mpiCC")
+set(CMAKE_ASM_COMPILER "sw5cc.new")
+set(CMAKE_AR "swar")
+option(BUILD_TEST "Build the test sources" ON)
+
+file(GLOB SLAVE_SOURCES "./slave/*.c")
+file(GLOB ASM_SOURCES "./asm/*.S")
+file(GLOB SRC_SOURCES "./src/*.c")
+file(GLOB GEMM_SOURCES "./gemm/*.c")
+
+file(GLOB DEBUG_SLAVE_SOURCES "./debug_slave/*.c")
+file(GLOB DEBUG_SRC_SOURCES "./debug_src/*.c")
+#file(GLOB TEST_SOURCES )
+
+add_definitions(-D_MEM_ALIGN_)
+add_definitions(-DUSE_COMP)
+add_definitions(-DCHECK_RES)
+
+set_source_files_properties(${SLAVE_SOURCES} COMPILE_FLAGS "-O1 -msimd -slave")
+set_source_files_properties(${ASM_SOURCES} COMPILE_FLAGS "-O0 -msimd -slave")
+set_source_files_properties(${SRC_SOURCES} COMPILE_FLAGS "-host")
+set_source_files_properties(${GEMM_SOURCES} COMPILE_FLAGS "-O2 -msimd -host")
+
+set_source_files_properties(${DEBUG_SLAVE_SOURCES} COMPILE_FLAGS "-O1 -msimd -slave -DUSE_COMP -DUSE_DMA -DUSE_FLOAT2DOUBLE")
+set_source_files_properties(${DEBUG_SRC_SOURCES} COMPILE_FLAGS "-O2 -msimd -host -DUSE_DMA -DUSE_COMP -DUSE_FLOAT2DOUBLE")
+add_library(swBLASlib ${GEMM_SOURCES} ${SLAVE_SOURCES} ${ASM_SOURCES} ${SRC_SOURCES})
+
+link_libraries("-hybrid -lm_slave -allshare")
+link_libraries(swBLASlib)
+link_libraries(rt)
+link_libraries(stdc++)
+link_directories(".")
+include_directories(.)
+include_directories("./thirdparty/include/")
+set_source_files_properties(test.c COMPILE_FLAGS "-O2 -host")
+add_executable(swblas test.c ${DEBUG_SLAVE_SOURCES} ${DEBUG_SRC_SOURCES})
+target_link_libraries(swBLASlib /home/export/online1/swyf/swdnn/fjr/2018-09/BLAS/swblas_release/thirdparty/lib/cblas_LINUX0324.a)
+target_link_libraries(swBLASlib /home/export/online1/swyf/swdnn/fjr/2018-09/BLAS/swblas_release/thirdparty/lib/libswblas0324.a)
+#add_executable(samplesort test/samplesort.cpp)
+enable_testing()
