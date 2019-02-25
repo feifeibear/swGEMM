@@ -138,6 +138,8 @@ void sw_cblas_sgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE Tra
     double find_best_perf = 0.;
     float est_best_time = 1000000;
     int real_blkN, real_blkM, real_blkK;
+    real_blkN = 128; real_blkM = 32; real_blkK = 32;
+
     for (blkN = 128; blkN <= N && blkN <= 2048; blkN += 128)
       for (blkM = 32; blkM <= M && blkM <= 2048; blkM += 32)
         for (blkK = 32; blkK <= K && blkK <= 2048; blkK += 32) 
@@ -251,6 +253,16 @@ void sw_cblas_sgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE Tra
             */
           }
         }
+    params->input = B;
+    params->weight = A;
+    params->output = C;
+    params->inputp = Bp;
+    params->weightp = Ap;
+    params->outputp = Cp;
+    params->K = K;
+    params->N = M;
+    params->M = N;
+
     params->blkN = real_blkM;
     params->blkM = real_blkN;
     params->blkK = real_blkK;
