@@ -25,7 +25,7 @@ void test_sw_dgemm_Atrans_std(int M, int N, int K) {
   int i;
   int cM, cN, cK, cT;
   struct timeval t1, t2;
-  int ld = 15;
+  int ld = 16;
   int M2 = M + ld;
   int N2 = N + ld;
   int K2 = K + ld;
