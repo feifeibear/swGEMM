@@ -14,6 +14,7 @@
 #include <slave.h>
 #include <dma.h>
 #include <math.h>
+#include <assert.h>
 #include "include/common_slave.h"
 
 __thread_local dma_desc dma_src_back, dma_dst_back;
@@ -153,6 +154,7 @@ void copy_border_back_double64(CopyData* params)
     const int Me = params->Me;
     const int Ne = params->Ne;
     const int trans = params->trans;
+    const int ldx = params->ldx;
     const int id = athread_get_id(-1);
     const int cid = id%8, rid = id/8;
     /*if(id == 0)
@@ -174,6 +176,7 @@ void copy_border_back_double64(CopyData* params)
 
     if(trans == 0) // column major
     {
+        assert(ldx >= M);
         if(id < 32) // copy the right panel
         {
             if(Ns >= Ne)
@@ -198,7 +201,7 @@ void copy_border_back_double64(CopyData* params)
                     //if(id == 0)
                     //printf("id %d begin write\n", id);
                     //printf("Ns+j %d finish\n", Ns+j);
-                    start = &dst[(Ns+j)*M];
+                    start = &dst[(Ns+j)*ldx];
                     dma(dma_dst_back, (long)start, (long)buf);
                     dma_wait(&reply_dst, 1);
                     reply_dst = 0;
@@ -217,7 +220,7 @@ void copy_border_back_double64(CopyData* params)
                 return;
             int cols = Ns/32;
             double* src_origin = &src[(id-32)*cols*Me];
-            double* dst_origin = &dst[(id-32)*cols*M];
+            double* dst_origin = &dst[(id-32)*cols*ldx];
             int i, j, k;
             int max_cols = (56*1024) / ((M-Ms)*sizeof(double));
             int numb = (cols + max_cols - 1) / max_cols;
@@ -244,8 +247,8 @@ void copy_border_back_double64(CopyData* params)
                 //store
                 dma_set_size(&dma_dst_back, currBS * (M-Ms) * sizeof(double));
                 dma_set_bsize(&dma_dst_back, (M-Ms) * sizeof(double));
-                dma_set_stepsize(&dma_dst_back, Ms * sizeof(double));
-                start = &dst_origin[ i*BS*M + Ms ];
+                dma_set_stepsize(&dma_dst_back, (ldx-M+Ms) * sizeof(double));
+                start = &dst_origin[ i*BS*ldx + Ms ];
                 dma(dma_dst_back, (long)start, (long)buf);
                 dma_wait(&reply_dst, 1);
                 reply_dst = 0;

@@ -319,6 +319,9 @@ void dgemm_dma_trans(ConvData* param)
     const int remN = (N-(bN*(numN-1)));
     const int numK = (((K+bK)-1)/bK);
     const int remK = (K-(bK*(numK-1)));
+    const int ldi = param->ldi;
+    const int ldw = param->ldw;
+    const int ldo = param->ldo;
     int cM = 0;
     int cN = 0;
     int cK = 0;
@@ -359,22 +362,22 @@ void dgemm_dma_trans(ConvData* param)
     dma_set_mode(&dmaputC, PE_MODE);
     dma_set_reply(&dmaputC, &replyputC);
 
-    double* startA = (double*)param->input + rid*bM/8 + cid*bK*M/8;
-    double* startB = (double*)param->weight + rid*bK*N/8 + cid*bN/8;
-    double* startC = (double*)param->output + rid*bM/8 + cid*bN*M/8;
+    double* startA = (double*)param->input + rid*bM/8 + cid*bK*ldi/8;
+    double* startB = (double*)param->weight + rid*bK*ldw/8 + cid*bN/8;
+    double* startC = (double*)param->output + rid*bM/8 + cid*bN*ldo/8;
     double* startAp = (double*)param->inputp + rid*bM/8 + cid*bK*Me/8;
     double* startBp = (double*)param->weightp + rid*bK*Ne/8 + cid*bN/8;
     double* startCp = (double*)param->outputp + rid*bM/8 + cid*bN*Me/8;
     double *nextA, *nextB, *realC;
     dma_set_size( &dmagetA, (((bM*bK)/64)*sizeof(double)) ); 
     dma_set_bsize( &dmagetA, ((bM/8)*sizeof(double)) ); 
-    dma_set_stepsize( &dmagetA, ((M-(bM/8))*sizeof(double)) ); 
+    dma_set_stepsize( &dmagetA, ((ldi-(bM/8))*sizeof(double)) ); 
     dma_set_size( &dmagetB, (((bK*bN)/64)*sizeof(double)) ); 
     dma_set_bsize( &dmagetB, ((bN/8)*sizeof(double)) ); 
-    dma_set_stepsize( &dmagetB, ((N-(bN/8))*sizeof(double)) ); 
+    dma_set_stepsize( &dmagetB, ((ldw-(bN/8))*sizeof(double)) ); 
     dma_set_size( &dmaputC, (((bM*bN)/64)*sizeof(double)) ); 
     dma_set_bsize( &dmaputC, ((bM/8)*sizeof(double)) ); 
-    dma_set_stepsize( &dmaputC, ((M-(bM/8))*sizeof(double)) ); 
+    dma_set_stepsize( &dmaputC, ((ldo-(bM/8))*sizeof(double)) ); 
     dma(dmagetA, (long)(startA), (long)((local_A+((1-double_buffer_flag)*local_A_size)))); 
     dma(dmagetB, (long)(startB), (long)((local_B+((1-double_buffer_flag)*local_B_size)))); 
     dma_wait( &replygetA, 1 );
@@ -455,7 +458,7 @@ void dgemm_dma_trans(ConvData* param)
                         currM = M;
                         dma_set_stepsize( 
                             &dmagetA,
-                            ((M-(bM/8))*sizeof(double)) 
+                            ((ldi-(bM/8))*sizeof(double)) 
                          );
                     }
                     if ((nextbK != bK||nextbN != bN) )
@@ -473,7 +476,7 @@ void dgemm_dma_trans(ConvData* param)
                         currN = N;
                         dma_set_stepsize( 
                             &dmagetB,
-                            ((N-(bN/8))*sizeof(double)) 
+                            ((ldw-(bN/8))*sizeof(double)) 
                          );
                     }
                     if ((cK==(numK-1)) )
@@ -529,10 +532,10 @@ void dgemm_dma_trans(ConvData* param)
             else
             {
                 realC = startC;
-                currM = M;
+                currM = ldo;
                 dma_set_stepsize( 
                     &dmaputC,
-                    ((M-(bM/8))*sizeof(double)) 
+                    ((ldo-(bM/8))*sizeof(double)) 
                  );
             }
             dma(dmaputC, (long)((realC+(((cN*bN)*currM)+(cM*bM)))), (long)(local_C)); 

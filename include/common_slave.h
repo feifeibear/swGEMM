@@ -40,6 +40,8 @@ typedef struct ConvData_st{
   int M, blkM;
   //old var
   int Ni, No, B, T;
+  // add leading dimension
+  int ldi, ldw, ldo;
 } ConvData;
 
 typedef struct CopyData{
@@ -47,6 +49,8 @@ typedef struct CopyData{
     void* dst;
     int M, N, Ms, Ns, Me, Ne;
     int trans;
+    // add leading dimension
+    int ldx;
 }CopyData;
 
 typedef struct ZeropadStruct_st {
