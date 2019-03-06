@@ -73,32 +73,32 @@ int check_equal_val2(const double *a, int size, double v)
   int i;
   int cnt = 0;
   for(i = 0; i < size; i ++)
-    if(a[i] != 1.){
+    if(a[i] < 1.){
       cnt++;
       printf("a[%d] = %lf\n", i, a[i]);
     }
   return 0;
 
 }
-static int check_equal_val(double *a, int RM, int RK, int Me, int Ke, int Ms, int Ks)
+static int check_equal_val(double *a, int RM, int RK, int Me, int Ke, int Ms, int Ks, int lda)
 {
   printf("%d %d -- %d %d\n", RM, RK, Me, Ke);
   int i,j;
   int cnt = 0;
 
-  printf("(127 128) is %lf\n", a[127*Me + 128]);
+  //printf("(127 128) is %lf\n", a[127*Me + 128]);
   for (j = 0; j < Ke; j++){
     for (i = 0; i < Me; i++){
       if (i >= 0 && i < Ms && j >= 0 && j < Ks) continue;
       if (i >= Ms && i < RM && j >= 0 && j < RK) {
-        if (a[j*Me + i] != 1.){
+        if (a[j*Me + i] != 1. + (j*lda+i)/100*0.01){
           printf("a(%d %d) = %lf\n", j, i, a[j*Me + i]);
           cnt++;
         }
         continue;
       }
       if (i >= 0 && i < Ms && j >= Ks && j < RK) {
-        if (a[j*Me + i] != 1.){
+        if (a[j*Me + i] != 1. + (j*lda+i)/100*0.01){
           printf("a(%d %d) = %lf\n", j, i, a[j*Me + i]);
           cnt++;
         }
@@ -122,7 +122,7 @@ static int check_value(const double *b, int K, int N, int ldb){
   for (i = 0; i < K; i++){
     for (j = 0; j < N; j++){
       int off = i*ldb + j;
-      if (b[off] != 1.){
+      if (b[off] != 1.+off/100*0.01){
           printf("b(%d %d) = %lf\n", i, j, b[off]);
           cnt++;
       }
@@ -348,6 +348,9 @@ void sw_cblas_dgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE Tra
 #ifdef DEBUG_VERBOSE
     printf("real_blkN %d real_blkM %d real_blkK %d\n",
         real_blkN, real_blkM, real_blkK);
+    printf("RM=%d, Ms=%d, Me=%d\n", RM,Ms,Me);
+    printf("RN=%d, Ns=%d, Ne=%d\n", RN,Ns,Ne);
+    printf("RK=%d, Ks=%d, Ke=%d\n", RK,Ks,Ke);
     gettimeofday(&t1, NULL);
 #endif
     cd->src = B;
@@ -362,18 +365,18 @@ void sw_cblas_dgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE Tra
     cd->ldx = ldb;
     athread_spawn(copy_border_double64, cd);
     athread_join();
-    /*
+/*    
     printf("RM=%d Ms=%d Me=%d \n", RM, Ms, Me);
     printf("RK=%d Ks=%d Ke=%d \n", RK, Ks, Ke);
     printf("ldb = %d\n", ldb);
 
     printf("ERROR checking B, %d\n", check_value(B, RK, RM, ldb) );
     printf("padding B\n");
-    printf("ERROR padding B, %d\n", check_equal_val(Bp, RM, RK, Me, Ke, Ms, Ks) );
+    printf("ERROR padding B, %d\n", check_equal_val(Bp, RM, RK, Me, Ke, Ms, Ks, ldb) );
     //if (check_equal_val2(Bp, Me*Ke, 1.)) printf("ERROR padding B\n");
     printf("end padding B\n");
     //exit(0);
-    */
+*/    
 
 #ifdef DEBUG_VERBOSE
     gettimeofday(&t2, NULL);
@@ -395,6 +398,15 @@ void sw_cblas_dgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE Tra
       cd->trans = 0;
     athread_spawn(copy_border_double64, cd);
     athread_join();
+
+/*
+    printf("ERROR checking A, %d\n", check_value(A, RK, RN, lda) );
+    printf("padding A\n");
+    //printf("ERROR padding A, %d\n", check_equal_val(Ap, RK, RN, Ke, Ne, Ks, Ns) );
+    printf("ERROR padding A, %d\n", check_equal_val(Ap, RN, RK, Ne, Ke, Ns, Ks, lda) );
+    printf("end padding A\n");
+    //exit(0);
+*/
 
 #ifdef DEBUG_VERBOSE
     gettimeofday(&t2, NULL);

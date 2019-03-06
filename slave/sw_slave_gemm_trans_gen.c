@@ -381,8 +381,6 @@ void dgemm_dma_trans(ConvData* param)
     if(M < bM || K < bK){
         dma_set_stepsize( &dmagetA, ((Me-(bM/8))*sizeof(double)) ); 
         dma(dmagetA, (long)(startAp), (long)((local_A+((1-double_buffer_flag)*local_A_size)))); 
-        dma_set_stepsize( &dmagetA, ((ldi-(bM/8))*sizeof(double)) ); 
-        if (id == 0) printf("%d %d   %d %d\n", M, bM, K, bK);
     }
     else{
         dma(dmagetA, (long)(startA), (long)((local_A+((1-double_buffer_flag)*local_A_size)))); 
@@ -390,7 +388,6 @@ void dgemm_dma_trans(ConvData* param)
     if(K < bK || N < bN){
         dma_set_stepsize( &dmagetB, ((Ne-(bN/8))*sizeof(double)) ); 
         dma(dmagetB, (long)(startBp), (long)((local_B+((1-double_buffer_flag)*local_B_size)))); 
-        dma_set_stepsize( &dmagetB, ((ldw-(bN/8))*sizeof(double)) ); 
     }
     else{
         dma(dmagetB, (long)(startB), (long)((local_B+((1-double_buffer_flag)*local_B_size)))); 
@@ -444,6 +441,7 @@ void dgemm_dma_trans(ConvData* param)
                     }
                     if ((cK==(numK-1)) )
                     {
+                        //nextbK = bK;
                         //fix a BUG :: when K < bK
                         if (numK != 1) nextbK = bK;
                         else nextbK = remK;
@@ -453,7 +451,10 @@ void dgemm_dma_trans(ConvData* param)
                         }
                         if ((cM==(numM-1)) )
                         {
-                            nextbM = bM;
+                            //nextbM = bM;
+                            //fix a BUG :: when M < bM
+                            if (numM != 1) nextbM = bM;
+                            else nextbM = remM;
                             if ((cN==(numN-2)) )
                             {
                                 nextbN = remN;
@@ -472,7 +473,7 @@ void dgemm_dma_trans(ConvData* param)
                     else
                     {
                         nextA = startA;
-                        currM = M;
+                        currM = ldi;
                         dma_set_stepsize( 
                             &dmagetA,
                             ((ldi-(bM/8))*sizeof(double)) 
@@ -490,7 +491,7 @@ void dgemm_dma_trans(ConvData* param)
                     else
                     {
                         nextB = startB;
-                        currN = N;
+                        currN = ldw;
                         dma_set_stepsize( 
                             &dmagetB,
                             ((ldw-(bN/8))*sizeof(double)) 
@@ -669,13 +670,11 @@ void dgemm_dma_trans_alpham1_beta1(ConvData* param)
     else{
         dma(dmagetB, (long)(startB), (long)((local_B+((1-double_buffer_flag)*local_B_size)))); 
     }
-    //dma(dmagetC, (long)(startC), (long)(local_C));
     dma_wait( &replygetA, 1 );
     replygetA = 0;
     dma_wait( &replygetB, 1 );
     replygetB = 0;
-    //dma_wait( &replygetC, 1 );
-    //replygetC = 0;
+
     for ( cN=0; cN<numN; cN+=1 ) // begin loop_CN
     {
         if ((cN<(numN-1)) )
@@ -753,7 +752,9 @@ void dgemm_dma_trans_alpham1_beta1(ConvData* param)
                         }
                         if ((cM==(numM-1)) )
                         {
-                            nextbM = bM;
+                            //fix a BUG :: when M < bM
+                            if (numM != 1) nextbM = bM;
+                            else nextbM = remM;
                             if ((cN==(numN-2)) )
                             {
                                 nextbN = remN;
@@ -772,7 +773,7 @@ void dgemm_dma_trans_alpham1_beta1(ConvData* param)
                     else
                     {
                         nextA = startA;
-                        currM = M;
+                        currM = ldi;
                         dma_set_stepsize( 
                             &dmagetA,
                             ((ldi-(bM/8))*sizeof(double)) 
@@ -790,7 +791,7 @@ void dgemm_dma_trans_alpham1_beta1(ConvData* param)
                     else
                     {
                         nextB = startB;
-                        currN = N;
+                        currN = ldw;
                         dma_set_stepsize( 
                             &dmagetB,
                             ((ldw-(bN/8))*sizeof(double)) 

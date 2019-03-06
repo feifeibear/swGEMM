@@ -53,15 +53,15 @@ void test_sw_dgemm_Atrans_std(int M, int N, int K) {
 #endif
 
   srand((unsigned int) time(NULL));
-  for(i=0; i < K2*M2; i++){
-    A[i] = 1.0; //rand()*1.0/RAND_MAX;
+  for(i=0; i < K*lda; i++){
+    A[i] = 1.0 + i/100*0.01; //rand()*1.0/RAND_MAX;
   }
-  for(i=0; i < K2*N2; i++){
-    B[i] = 1.0; //rand()*1.0/RAND_MAX;
+  for(i=0; i < K*ldb; i++){
+    B[i] = 1.0 + i/100*0.01; //rand()*1.0/RAND_MAX;
   }
-  for(i=0; i < N2*M2; i++){
-    C[i] = 0.0;
-    C_blas[i] = 0.0;
+  for(i=0; i < M*ldc; i++){
+    C[i] = 100.0;
+    C_blas[i] = 100.0;
   }
   double gflop = (double)2*K/1024*N/1024*M/1024;
 
@@ -72,8 +72,8 @@ void test_sw_dgemm_Atrans_std(int M, int N, int K) {
   printf("no TIME compute part\n");
 #endif
 
-  double alpha = 1.0;
-  double beta = 0.0;
+  double alpha = -1.0;
+  double beta = 1.0;
   gettimeofday(&t1, NULL);
   //cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K, alpha, A, K, B, N, beta, C, N);
   //cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, M, N, K, alpha, A, M, B, N, beta, C, N);
@@ -103,12 +103,13 @@ void test_sw_dgemm_Atrans_std(int M, int N, int K) {
   printf("C length : %d\n", N*M);
 
   int ii, j;
-  for(i = 0; i < M2; ++i) for(j = 0; j < N; j++) {
+  for(i = 0; i < M; ++i) for(j = 0; j < N; j++) {
     ii = i*ldc + j;
     //printf("now %d\n", i);
     //printf("now cblas %.1f xmath %f\n", C_blas[i], C[i]);
     if(fabs(C[ii] - C_blas[ii]) > 1e-3) {
-      if(cnt < 1000) printf("error @ (%d %d), %lf vs %lf\n", i, j, C[ii], C_blas[ii]);
+      //if(cnt < 1000) 
+        printf("error @ (%d %d), %lf vs %lf\n", i, j, C[ii], C_blas[ii]);
       cnt++;
     }
     sum1 += C[ii];
