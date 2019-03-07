@@ -337,7 +337,7 @@ void copy_border_double64(CopyData* params)
             double* dst_origin = &dst[(id-32)*cols*Me];
             int i, j, k;
             // ldm size
-            int max_cols = (56 * 1024) / ((Me-Ms)*sizeof(double));
+            int max_cols = (56 * 1024) / ((Me-Ms + M-Ms)*sizeof(double));
             int numb = (cols + max_cols - 1)/max_cols;
             int BS = max_cols;
             int remBS = cols - (numb-1)*BS;

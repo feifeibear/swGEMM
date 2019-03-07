@@ -10,6 +10,8 @@
 #include "include/common_slave.h"
 #include "swblas.h"
 
+#include <assert.h>
+
 void sgemm_dma_trans(ConvData* param)
 {
     const int id = athread_get_id(-1);
@@ -671,6 +673,7 @@ void dgemm_dma_trans_alpham1_beta1(ConvData* param)
     else{
         dma(dmagetB, (long)(startB), (long)((local_B+((1-double_buffer_flag)*local_B_size)))); 
     }
+    
     if(M < bM || N < bN){
         dma_set_stepsize( &dmagetC, ((Me-(bM/8))*sizeof(double)) ); 
         dma(dmagetC, (long)((startCp)), (long)((local_C+((1-double_buffer_flag_C)*local_C_size))));  
@@ -678,6 +681,7 @@ void dgemm_dma_trans_alpham1_beta1(ConvData* param)
     else{
         dma(dmagetC, (long)((startC)), (long)((local_C+((1-double_buffer_flag_C)*local_C_size))));  
     }
+
     dma_wait( &replygetA, 1 );
     replygetA = 0;
     dma_wait( &replygetB, 1 );
@@ -715,6 +719,9 @@ void dgemm_dma_trans_alpham1_beta1(ConvData* param)
                 if (cM == numM-1){
                     if (numM != 1) nextbM = bM;
                     else nextbM = remM;
+                    if (cN == numN-2){
+                        nextbN = remN;
+                    }
                 }
 
                 if ((nextbM != bM||nextbN != bN) )
@@ -745,6 +752,29 @@ void dgemm_dma_trans_alpham1_beta1(ConvData* param)
                 
             }
 
+/*
+            if ((realbM != bM||realbN != bN) )
+            {
+                realC = startCp;
+                currM = Me;
+                dma_set_stepsize( 
+                    &dmagetC,
+                    ((Me-(bM/8))*sizeof(double)) 
+                 );
+            }
+            else
+            {
+                realC = startC;
+                currM = ldo;
+                dma_set_stepsize( 
+                    &dmagetC,
+                    ((ldo-(bM/8))*sizeof(double)) 
+                 );
+            }
+            dma(dmagetC, (long)((realC+(((cN*bN)*currM)+(cM*bM)))), (long)(local_C));
+            dma_wait(&replygetC, 1);
+            replygetC = 0;
+*/            
             //for ( i=0; i<local_C_size; i+=1 ) // begin init_C
             //{
             //    local_C[i] = 0;
@@ -847,6 +877,7 @@ void dgemm_dma_trans_alpham1_beta1(ConvData* param)
                 dgemmtransasmm( 
                     (double*)((local_A+((1-double_buffer_flag)*local_A_size))),
                     (double*)((local_B+((1-double_buffer_flag)*local_B_size))),
+                    //(double*)(local_C),
                     (double*)((local_C+((1-double_buffer_flag_C)*local_C_size))),
                     ((bM/8)/4),
                     ((bM/8)/4),
@@ -883,6 +914,7 @@ void dgemm_dma_trans_alpham1_beta1(ConvData* param)
                     ((ldo-(bM/8))*sizeof(double)) 
                  );
             }
+            //dma(dmaputC, (long)((realC+(((cN*bN)*currM)+(cM*bM)))), (long)(local_C)); 
             dma(dmaputC, (long)((realC+(((cN*bN)*currM)+(cM*bM)))), (long)(local_C+((1-double_buffer_flag_C)*local_C_size))); 
             dma_wait( &replyputC, 1 );
             replyputC = 0;
@@ -898,6 +930,6 @@ void dgemm_dma_trans_alpham1_beta1(ConvData* param)
 
     ldm_free(local_A, sizeof(double)*local_A_size*2);
     ldm_free(local_B, sizeof(double)*local_B_size*2);
-    ldm_free(local_C, sizeof(double)*local_C_size);
+    ldm_free(local_C, sizeof(double)*local_C_size*2);
 
 }

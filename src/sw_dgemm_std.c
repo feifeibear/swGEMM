@@ -10,6 +10,7 @@
 #include <cblas.h>
 
 #define DEBUG_VERBOSE
+//#define CHECK_PAD_RESULT
 
 extern void SLAVE_FUN(FJR_zeropad_matrix());
 extern void SLAVE_FUN(FJR_depad_matrix());
@@ -365,7 +366,7 @@ void sw_cblas_dgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE Tra
     cd->ldx = ldb;
     athread_spawn(copy_border_double64, cd);
     athread_join();
-/*    
+#ifdef CHECK_PAD_RESULT    
     printf("RM=%d Ms=%d Me=%d \n", RM, Ms, Me);
     printf("RK=%d Ks=%d Ke=%d \n", RK, Ks, Ke);
     printf("ldb = %d\n", ldb);
@@ -376,7 +377,7 @@ void sw_cblas_dgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE Tra
     //if (check_equal_val2(Bp, Me*Ke, 1.)) printf("ERROR padding B\n");
     printf("end padding B\n");
     //exit(0);
-*/    
+#endif    
 
 #ifdef DEBUG_VERBOSE
     gettimeofday(&t2, NULL);
@@ -398,19 +399,47 @@ void sw_cblas_dgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE Tra
       cd->trans = 0;
     athread_spawn(copy_border_double64, cd);
     athread_join();
-
-/*
+#ifdef CHECK_PAD_RESULT    
     printf("ERROR checking A, %d\n", check_value(A, RK, RN, lda) );
     printf("padding A\n");
     //printf("ERROR padding A, %d\n", check_equal_val(Ap, RK, RN, Ke, Ne, Ks, Ns) );
     printf("ERROR padding A, %d\n", check_equal_val(Ap, RN, RK, Ne, Ke, Ns, Ks, lda) );
     printf("end padding A\n");
     //exit(0);
-*/
+#endif
 
 #ifdef DEBUG_VERBOSE
     gettimeofday(&t2, NULL);
     double pada_time = TIME(t1,t2);
+    gettimeofday(&t1, NULL);
+#endif
+
+  if(beta==1.0){
+    cd->src = C;
+    cd->dst = Cp;
+    cd->Ms = Ms;
+    cd->Ns = Ns;
+    cd->M = RM;
+    cd->N = RN;
+    cd->Me = Me;
+    cd->Ne = Ne;
+    cd->trans = 0;
+    cd->ldx = ldc;
+    athread_spawn(copy_border_double64, cd);
+    athread_join();
+#ifdef CHECK_PAD_RESULT    
+    //printf("ERROR checking C, %d\n", check_value(C, RN, RM, ldc) );
+    printf("padding C\n");
+    printf("ERROR padding C, %d\n", check_equal_val(Cp, RM, RN, Me, Ne, Ms, Ns, ldc) );
+    //if (check_equal_val2(Bp, Me*Ke, 1.)) printf("ERROR padding B\n");
+    printf("end padding C\n");
+    //exit(0);
+#endif
+  }
+
+#ifdef DEBUG_VERBOSE
+    gettimeofday(&t2, NULL);
+    double padc_time = TIME(t1,t2);
 #endif
 
     gettimeofday(&t1, NULL);
@@ -467,9 +496,9 @@ void sw_cblas_dgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE Tra
 #ifdef DEBUG_VERBOSE
     gettimeofday(&t2, NULL);
     double depadc_time = TIME(t1,t2);
-    double total_time = pada_time + padb_time + comput_time + depadc_time;
-    printf("[INFO] %lf Gflops comput_time %f pada_time %f padb_time %f depadc_time %f pad_percent %f\n", 
-        2*M*N*K/(total_time)/1e9, comput_time, pada_time, padb_time, depadc_time, 1-comput_time/total_time);
+    double total_time = pada_time + padb_time + padc_time + comput_time + depadc_time;
+    printf("[INFO] %lf Gflops comput_time %f pada_time %f padb_time %f padc_time %f depadc_time %f pad_percent %f\n", 
+        2*M*N*K/(total_time)/1e9, comput_time, pada_time, padb_time, padc_time, depadc_time, 1-comput_time/total_time);
 #endif
   }
   free(params);
