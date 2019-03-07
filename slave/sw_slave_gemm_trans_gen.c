@@ -572,6 +572,9 @@ void dgemm_dma_trans(ConvData* param)
 
 
 
+#define DBC
+#undef DBC
+
 void dgemm_dma_trans_alpham1_beta1(ConvData* param)
 {
     const int id = athread_get_id(-1);
@@ -614,7 +617,7 @@ void dgemm_dma_trans_alpham1_beta1(ConvData* param)
     const int local_A_size = bM*bK/8/8;
     double* local_B = (double*)((doublev4*)ldm_malloc(sizeof(double)*bK*bN/8/8*2));
     const int local_B_size = bK*bN/8/8;
-    double* local_C = (double*)((doublev4*)ldm_malloc(sizeof(double)*bM*bN/8/8*2));
+    double* local_C = (double*)((doublev4*)ldm_malloc(sizeof(double)*bM*bN/8/8));
     const int local_C_size = bM*bN/8/8;
     float* fptr, *fptr2;
     double* dptr, *dptr2;
@@ -673,7 +676,7 @@ void dgemm_dma_trans_alpham1_beta1(ConvData* param)
     else{
         dma(dmagetB, (long)(startB), (long)((local_B+((1-double_buffer_flag)*local_B_size)))); 
     }
-    
+#ifdef DBC    
     if(M < bM || N < bN){
         dma_set_stepsize( &dmagetC, ((Me-(bM/8))*sizeof(double)) ); 
         dma(dmagetC, (long)((startCp)), (long)((local_C+((1-double_buffer_flag_C)*local_C_size))));  
@@ -681,13 +684,15 @@ void dgemm_dma_trans_alpham1_beta1(ConvData* param)
     else{
         dma(dmagetC, (long)((startC)), (long)((local_C+((1-double_buffer_flag_C)*local_C_size))));  
     }
-
+#endif
     dma_wait( &replygetA, 1 );
     replygetA = 0;
     dma_wait( &replygetB, 1 );
     replygetB = 0;
+#ifdef DBC
     dma_wait( &replygetC, 1 );
     replygetC = 0;
+#endif
 
     for ( cN=0; cN<numN; cN+=1 ) // begin loop_CN
     {
@@ -709,7 +714,7 @@ void dgemm_dma_trans_alpham1_beta1(ConvData* param)
             {
                 realbM = remM;
             }
-
+#ifdef DBC
             if (cN*numM+cM+1 < numN*numM){
                 nextbN = realbN;
                 nextbM = realbM;
@@ -751,8 +756,8 @@ void dgemm_dma_trans_alpham1_beta1(ConvData* param)
                 }
                 
             }
+#else
 
-/*
             if ((realbM != bM||realbN != bN) )
             {
                 realC = startCp;
@@ -774,7 +779,8 @@ void dgemm_dma_trans_alpham1_beta1(ConvData* param)
             dma(dmagetC, (long)((realC+(((cN*bN)*currM)+(cM*bM)))), (long)(local_C));
             dma_wait(&replygetC, 1);
             replygetC = 0;
-*/            
+
+#endif            
             //for ( i=0; i<local_C_size; i+=1 ) // begin init_C
             //{
             //    local_C[i] = 0;
@@ -877,8 +883,11 @@ void dgemm_dma_trans_alpham1_beta1(ConvData* param)
                 dgemmtransasmm( 
                     (double*)((local_A+((1-double_buffer_flag)*local_A_size))),
                     (double*)((local_B+((1-double_buffer_flag)*local_B_size))),
-                    //(double*)(local_C),
+                #ifdef DBC
                     (double*)((local_C+((1-double_buffer_flag_C)*local_C_size))),
+                #else
+                    (double*)(local_C),
+                #endif
                     ((bM/8)/4),
                     ((bM/8)/4),
                     (bN/8),
@@ -914,22 +923,25 @@ void dgemm_dma_trans_alpham1_beta1(ConvData* param)
                     ((ldo-(bM/8))*sizeof(double)) 
                  );
             }
-            //dma(dmaputC, (long)((realC+(((cN*bN)*currM)+(cM*bM)))), (long)(local_C)); 
+        #ifdef DBC
             dma(dmaputC, (long)((realC+(((cN*bN)*currM)+(cM*bM)))), (long)(local_C+((1-double_buffer_flag_C)*local_C_size))); 
+        #else
+            dma(dmaputC, (long)((realC+(((cN*bN)*currM)+(cM*bM)))), (long)(local_C)); 
+        #endif
             dma_wait( &replyputC, 1 );
             replyputC = 0;
-
+#ifdef DBC
             if (cN*numM+cM+1 < numN*numM){
                 dma_wait(&replygetC, 1);
                 replygetC = 0;
                 double_buffer_flag_C = (1-double_buffer_flag_C);
             }
-
+#endif
         } // end loop_cM
     } // end loop_CN
 
     ldm_free(local_A, sizeof(double)*local_A_size*2);
     ldm_free(local_B, sizeof(double)*local_B_size*2);
-    ldm_free(local_C, sizeof(double)*local_C_size*2);
+    ldm_free(local_C, sizeof(double)*local_C_size);
 
 }

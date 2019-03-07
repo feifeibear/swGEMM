@@ -9,7 +9,7 @@
 #include "./include/common_slave.h"
 #include <cblas.h>
 
-#define DEBUG_VERBOSE
+//#define DEBUG_VERBOSE
 //#define CHECK_PAD_RESULT
 
 extern void SLAVE_FUN(FJR_zeropad_matrix());
@@ -428,10 +428,9 @@ void sw_cblas_dgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE Tra
     athread_spawn(copy_border_double64, cd);
     athread_join();
 #ifdef CHECK_PAD_RESULT    
-    //printf("ERROR checking C, %d\n", check_value(C, RN, RM, ldc) );
+    printf("ERROR checking C, %d\n", check_value(C, RN, RM, ldc) );
     printf("padding C\n");
     printf("ERROR padding C, %d\n", check_equal_val(Cp, RM, RN, Me, Ne, Ms, Ns, ldc) );
-    //if (check_equal_val2(Bp, Me*Ke, 1.)) printf("ERROR padding B\n");
     printf("end padding C\n");
     //exit(0);
 #endif
