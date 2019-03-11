@@ -185,7 +185,11 @@ void copy_border_back_double64(CopyData* params)
             double* buf = (double*)ldm_malloc(sizeof(double) * M);
             double* start;
             dma_set_size(&dma_src_back, sizeof(double)*M);
+            dma_set_bsize(&dma_src_back, 0);
+            dma_set_stepsize(&dma_src_back, 0);
             dma_set_size(&dma_dst_back, sizeof(double)*M);
+            dma_set_bsize(&dma_dst_back, 0);
+            dma_set_stepsize(&dma_dst_back, 0);
 
             for(j = id; j < N-Ns; j += 32)
             {

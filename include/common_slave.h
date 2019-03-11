@@ -65,6 +65,7 @@ typedef struct ZeropadStruct_st {
 #define MIN(x,y) (x>y?y:x)
 #define MAX(x,y) (x>y?x:y)
 #define TIME(a,b) (1.0*((b).tv_sec-(a).tv_sec)+0.000001*((b).tv_usec-(a).tv_usec))
+#define ALIGNED(addr) ((((unsigned long)(addr)>>5)+1)<<5)
 #define TEST_STEPS 1
 
 #endif

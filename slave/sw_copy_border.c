@@ -276,6 +276,10 @@ void copy_border_double64(CopyData* params)
     const int id = athread_get_id(-1);
     const int cid = id%8, rid = id/8;
 
+    //if(id == 0) 
+    //    printf("M=%d, Ms=%d, Me=%d, N=%d, Ns=%d, Ne=%d, trans=%d, ldx=%d\n", M,Ms,Me,N,Ns,Ne,trans,ldx);
+    //athread_syn(ARRAY_SCOPE, 0xffff);
+
     if(Ms%32 != 0 || Ns%32 != 0)
     {
         printf("copy border error: Ms %d, Ns %d\n", Ms, Ns);
@@ -300,7 +304,11 @@ void copy_border_double64(CopyData* params)
             double* buf = (double*)ldm_malloc(sizeof(double)*Me);
             double* start;
             dma_set_size(&dma_src, sizeof(double)*M);
+            dma_set_bsize(&dma_src, 0);
+            dma_set_stepsize(&dma_src, 0);
             dma_set_size(&dma_dst, sizeof(double)*Me);
+            dma_set_bsize(&dma_dst, 0);
+            dma_set_stepsize(&dma_dst, 0);
 
             for(j = id; j < Ne-Ns; j += 32)
             {
@@ -341,7 +349,7 @@ void copy_border_double64(CopyData* params)
             int numb = (cols + max_cols - 1)/max_cols;
             int BS = max_cols;
             int remBS = cols - (numb-1)*BS;
-            double* buf, *start, *buf2;
+            double *start, *buf, *buf2;
             if(numb > 1){
                 buf = (double*)ldm_malloc(sizeof(double) * BS * (Me-Ms));
                 buf2 = (double*)ldm_malloc(sizeof(double) * BS * (M-Ms));
@@ -404,19 +412,23 @@ void copy_border_double64(CopyData* params)
             if(Ns >= Ne)
                 return;
             int i, j, k;
-            double* start, *buf;
+            double* start, *buf, *buf2;
             int rows = Ms/32;
             double* src_origin = &src[id*rows*ldx];
             double* dst_origin = &dst[id*rows*Ne];
-            int max_rows = (56*1024) / ((Ne-Ns)*sizeof(double));
+            int max_rows = (56*1024) / ((Ne-Ns + N-Ns)*sizeof(double));
 
             int numb = (rows + max_rows - 1) / max_rows;
             int BS = max_rows;
             int remBS = rows - (numb-1)*BS;
-            if(numb > 1)
+            if(numb > 1){
                 buf = (double*)ldm_malloc( sizeof(double) * BS * (Ne-Ns));
-            else
+                buf2 = (double*)ldm_malloc( sizeof(double) * BS * (N-Ns));
+            }
+            else{
                 buf = (double*)ldm_malloc( sizeof(double) * remBS * (Ne-Ns) );
+                buf2 = (double*)ldm_malloc( sizeof(double) * remBS * (N-Ns) );
+            }
 
             for(i = 0;i < numb; i ++)
             {
@@ -426,7 +438,7 @@ void copy_border_double64(CopyData* params)
                 dma_set_bsize(&dma_src, (N-Ns) * sizeof(double));
                 dma_set_stepsize(&dma_src, (ldx-N+Ns) * sizeof(double));
                 start = &src_origin[i*BS*ldx + Ns];
-                dma(dma_src, (long)start, (long)buf);
+                dma(dma_src, (long)start, (long)buf2);
                 dma_wait(&reply_src, 1);
                 reply_src = 0;
 
@@ -441,7 +453,9 @@ void copy_border_double64(CopyData* params)
                 for(k = currBS-1; k >= 0; k --)
                 {
                     for(j = N-Ns-1; j >= 0; j --)
-                        buf[k*(Ne-Ns) + j] = buf[k*(N-Ns) + j];
+                        //可能会产生碰撞
+                        //buf[k*(Ne-Ns) + j] = buf[k*(N-Ns) + j];
+                        buf[k*(Ne-Ns) + j] = buf2[k*(N-Ns) + j];
                     for(j = Ne-Ns-1; j >= N-Ns; j --)
                         buf[k*(Ne-Ns) + j] = 0.0;
                 }
@@ -463,10 +477,14 @@ void copy_border_double64(CopyData* params)
                 reply_dst = 0;
             }
 
-            if(numb > 1)
+            if(numb > 1){
                 ldm_free(buf, sizeof(double) * BS * (Ne-Ns));
-            else
+                ldm_free(buf2, sizeof(double) * BS * (N-Ns));
+            }
+            else{
                 ldm_free(buf, sizeof(double) * remBS * (Ne-Ns));
+                ldm_free(buf2, sizeof(double) * remBS * (N-Ns));
+            }
         }
         else // bottom panel
         {
@@ -477,7 +495,11 @@ void copy_border_double64(CopyData* params)
             double* buf = (double*)ldm_malloc(sizeof(double) * Ne);
             double* start;
             dma_set_size(&dma_src, sizeof(double)*N);
+            dma_set_bsize(&dma_src, 0);
+            dma_set_stepsize(&dma_src, 0);
             dma_set_size(&dma_dst, sizeof(double)*Ne);
+            dma_set_bsize(&dma_dst, 0);
+            dma_set_stepsize(&dma_dst, 0);
 
             for(i = offset_id; i < Me-Ms; i += 32)
             {
@@ -487,7 +509,7 @@ void copy_border_double64(CopyData* params)
                     start = &src[(Ms+i)*ldx];
                     dma(dma_src, (long)start, (long)buf );
                     for(j = N; j < Ne; j ++)
-                        buf[j]= 0.0;
+                        buf[j] = 0.0;
                     dma_wait(&reply_src, 1);
                     reply_src = 0;
                 }
