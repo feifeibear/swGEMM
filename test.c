@@ -30,38 +30,32 @@ void test_sw_dgemm_Atrans_std(int M, int N, int K) {
   int N2 = N + ld;
   int K2 = K + ld;
 
-  int lda = M2;
-  int ldb = N2;
-  int ldc = N2;
+  int lda = 842;
+  int ldb = 842;
+  int ldc = 557;
 #undef _MEM_128BALIGN_
 #ifdef _MEM_128BALIGN_
-  double* C = (double*)_aligned_malloc(sizeof(double)*N2*M2, 128);
-  double* C_blas = (double*)_aligned_malloc(sizeof(double)*N2*M2, 128);
-  double* A = (double*)_aligned_malloc(sizeof(double)*K2*M2, 128);
-  double* B = (double*)_aligned_malloc(sizeof(double)*K2*N2, 128);
-  //double* Ap = (double*)_aligned_malloc(sizeof(double)*K2*M2*4, 128);
-  //double* Bp = (double*)_aligned_malloc(sizeof(double)*K2*N2*4, 128);
-  //double* Cp = (double*)_aligned_malloc(sizeof(double)*M2*N2*4, 128);
+  double* C = (double*)_aligned_malloc(sizeof(double)*ldc*M, 128);
+  double* C_blas = (double*)_aligned_malloc(sizeof(double)*ldc*M, 128);
+  double* A = (double*)_aligned_malloc(sizeof(double)*K*lda, 128);
+  double* B = (double*)_aligned_malloc(sizeof(double)*K*ldb, 128);
 #else
-  double* C = (double*)malloc(sizeof(double)*N2*M2);
-  double* C_blas = (double*)malloc(sizeof(double)*N2*M2);
-  double* A = (double*)malloc(sizeof(double)*K2*M2);
-  double* B = (double*)malloc(sizeof(double)*K2*N2);
-  //double* Ap = (double*)malloc(sizeof(double)*K2*M2*4);
-  //double* Bp = (double*)malloc(sizeof(double)*K2*N2*4);
-  //double* Cp = (double*)malloc(sizeof(double)*M2*N2*4);
+  double* C = (double*)malloc(sizeof(double)*ldc*M);
+  double* C_blas = (double*)malloc(sizeof(double)*ldc*M);
+  double* A = (double*)malloc(sizeof(double)*K*lda);
+  double* B = (double*)malloc(sizeof(double)*K*ldb);
 #endif
 
   srand((unsigned int) time(NULL));
   for(i=0; i < K*lda; i++){
-    A[i] = 1.0 + i/100*0.01; //rand()*1.0/RAND_MAX;
+    A[i] = 1.0 + i%100*0.01; //rand()*1.0/RAND_MAX;
   }
   for(i=0; i < K*ldb; i++){
-    B[i] = 1.0 + i/100*0.01; //rand()*1.0/RAND_MAX;
+    B[i] = 1.0 + i%100*0.01; //rand()*1.0/RAND_MAX;
   }
   for(i=0; i < M*ldc; i++){
-    C[i] = 100.0;
-    C_blas[i] = 100.0;
+    C[i] = 1.0 + i%100*0.01;
+    C_blas[i] = C[i];
   }
   double gflop = (double)2*K/1024*N/1024*M/1024;
 
@@ -72,8 +66,8 @@ void test_sw_dgemm_Atrans_std(int M, int N, int K) {
   printf("no TIME compute part\n");
 #endif
 
-  double alpha = -1.0;
-  double beta = 1.0;
+  double alpha = 1.0;
+  double beta = 0.0;
   gettimeofday(&t1, NULL);
   //cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K, alpha, A, K, B, N, beta, C, N);
   //cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, M, N, K, alpha, A, M, B, N, beta, C, N);
@@ -81,6 +75,7 @@ void test_sw_dgemm_Atrans_std(int M, int N, int K) {
   char TRANSB = 'T';
   //sgemm_(&TRANSA, &TRANSB, &N, &M, &K, &alpha, B, &N, A, &M, &beta, C, &N);
   cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, N, M, K, alpha, B, ldb, A, lda, beta, C, ldc);
+  //sw_cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc);
 
   gettimeofday(&t2, NULL);
   double tt = TIME(t1,t2);
