@@ -153,6 +153,8 @@ void copy_border_back_double64(CopyData* params)
     const int Ns = params->Ns;
     const int Me = params->Me;
     const int Ne = params->Ne;
+    const int blkM = params->blkM;
+    const int blkN = params->blkN;
     const int trans = params->trans;
     const int ldx = params->ldx;
     const int id = athread_get_id(-1);
@@ -182,12 +184,13 @@ void copy_border_back_double64(CopyData* params)
             if(Ns >= Ne)
                 return;
             int i = 0, j = 0, k = 0;
-            double* buf = (double*)ldm_malloc(sizeof(double) * M);
+            int ii = 0;
+            double* buf = (double*)ldm_malloc(sizeof(double) * blkM);
             double* start;
-            dma_set_size(&dma_src_back, sizeof(double)*M);
+            dma_set_size(&dma_src_back, sizeof(double)*blkM);
             dma_set_bsize(&dma_src_back, 0);
             dma_set_stepsize(&dma_src_back, 0);
-            dma_set_size(&dma_dst_back, sizeof(double)*M);
+            dma_set_size(&dma_dst_back, sizeof(double)*blkM);
             dma_set_bsize(&dma_dst_back, 0);
             dma_set_stepsize(&dma_dst_back, 0);
 
@@ -195,9 +198,14 @@ void copy_border_back_double64(CopyData* params)
             {
                 if(Ns+j < N)
                 {
+                  for (ii = 0; ii < Me; ii+=blkM){
                     //copy Ns+j column
                     //printf("Ns+j %d read\n", Ns+j);
-                    start = &src[(Ns+j)*Me];
+                    start = &src[(Ns+j)*Me+ii];
+                    if (ii == Ms)
+                        dma_set_size(&dma_src_back, sizeof(double)*(M-Ms));
+                    else
+                        dma_set_size(&dma_src_back, sizeof(double)*blkM);
                     dma(dma_src_back, (long)start, (long)buf);
                     dma_wait(&reply_src, 1);
                     reply_src = 0;
@@ -205,17 +213,22 @@ void copy_border_back_double64(CopyData* params)
                     //if(id == 0)
                     //printf("id %d begin write\n", id);
                     //printf("Ns+j %d finish\n", Ns+j);
-                    start = &dst[(Ns+j)*ldx];
+                    start = &dst[(Ns+j)*ldx+ii];
+                    if (ii == Ms)
+                        dma_set_size(&dma_dst_back, sizeof(double)*(M-Ms));
+                    else
+                        dma_set_size(&dma_dst_back, sizeof(double)*blkM);
                     dma(dma_dst_back, (long)start, (long)buf);
                     dma_wait(&reply_dst, 1);
                     reply_dst = 0;
                     //if(id == 0)
                         //printf("end write\n");
+                  }
                 }
             }
 
             //printf("id %d free\n", id);
-            ldm_free(buf, sizeof(double)*M);
+            ldm_free(buf, sizeof(double)*blkM);
             //printf("id %d finish\n", id);
         }
         else //copy the bottom panel
