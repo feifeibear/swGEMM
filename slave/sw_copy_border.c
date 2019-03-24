@@ -280,11 +280,11 @@ void copy_border_double64(CopyData* params)
     const int id = athread_get_id(-1);
     const int cid = id%8, rid = id/8;
 
-    if(id == 0){ 
-        printf("M=%d, Ms=%d, Me=%d, N=%d, Ns=%d, Ne=%d, trans=%d, ldx=%d\n", M,Ms,Me,N,Ns,Ne,trans,ldx);
-        printf("blkM=%d, blkN=%d\n", blkM, blkN);
-    }
-    athread_syn(ARRAY_SCOPE, 0xffff);
+    //if(id == 0){ 
+    //    printf("M=%d, Ms=%d, Me=%d, N=%d, Ns=%d, Ne=%d, trans=%d, ldx=%d\n", M,Ms,Me,N,Ns,Ne,trans,ldx);
+    //    printf("blkM=%d, blkN=%d\n", blkM, blkN);
+    //}
+    //athread_syn(ARRAY_SCOPE, 0xffff);
 
     if(Ms%32 != 0 || Ns%32 != 0)
     {
