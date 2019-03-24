@@ -48,6 +48,7 @@ typedef struct CopyData{
     void* src;
     void* dst;
     int M, N, Ms, Ns, Me, Ne;
+    int blkM, blkN;
     int trans;
     // add leading dimension
     int ldx;

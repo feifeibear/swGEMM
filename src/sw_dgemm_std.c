@@ -228,6 +228,8 @@ void sw_cblas_dgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE Tra
     cd->N = RK;
     cd->Me = Me;
     cd->Ne = Ke;
+    cd->blkM = blkN; //distinguish
+    cd->blkN = blkK;
     cd->trans = 0;
     cd->ldx = ldb;
     athread_spawn(copy_border_double64, cd);
@@ -257,6 +259,8 @@ void sw_cblas_dgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE Tra
     cd->N = RN;
     cd->Me = Ke;
     cd->Ne = Ne;
+    cd->blkM = blkK;
+    cd->blkN = blkM; // distinguish
     cd->ldx = lda;
     if(TransA == CblasTrans)
       cd->trans = 1;
@@ -288,6 +292,8 @@ void sw_cblas_dgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE Tra
     cd->N = RN;
     cd->Me = Me;
     cd->Ne = Ne;
+    cd->blkM = blkN; // distinguish
+    cd->blkN = blkM; // distinguish
     cd->trans = 0;
     cd->ldx = ldc;
     athread_spawn(copy_border_double64, cd);
@@ -310,16 +316,18 @@ void sw_cblas_dgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE Tra
     if(TransA == CblasNoTrans){
       //assert(lda >= K && ldb >= N && ldc >= N);
       //athread_spawn(dgemm_dma, params); }
-      assert (1 && "not implemented");}
+      assert (1 && "not implemented");
+    }
     else if(TransA == CblasTrans){
       //assert(lda >= M && ldb >= N && ldc >= N);
       if (alpha == 1.0 && beta == 0.)
         athread_spawn(dgemm_dma_trans, params); 
       else if (alpha == -1.0 && beta == 1.0)
         athread_spawn(dgemm_dma_trans_alpham1_beta1, params); 
-      }
+    }
     athread_join();
 #ifdef DEBUG_VERBOSE
+    printf("FINISH calc\n");
     gettimeofday(&t2, NULL);
     double comput_time = TIME(t1,t2);
     gettimeofday(&t1, NULL);
@@ -336,6 +344,8 @@ void sw_cblas_dgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE Tra
     cd->N = RN;
     cd->Me = Me;
     cd->Ne = Ne;
+    cd->blkM = blkN; // distinguish
+    cd->blkN = blkM; // distinguish
     cd->trans = 0;
     cd->ldx = ldc;
 

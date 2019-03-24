@@ -30,9 +30,16 @@ void test_sw_dgemm_Atrans_std(int M, int N, int K) {
   int N2 = N + ld;
   int K2 = K + ld;
 
-  int lda = 842;
-  int ldb = 842;
-  int ldc = 557;
+  //M = 72;
+  //N = 7680;
+  //K = 512;
+
+  int lda = 9940;
+  int ldb = 9940;
+  int ldc = 9940;
+
+  printf("m=%d, n=%d, k=%d, lda=%d, ldb=%d, ldc=%d\n", M,N,K,lda,ldb,ldc);
+
 #undef _MEM_128BALIGN_
 #ifdef _MEM_128BALIGN_
   double* C = (double*)_aligned_malloc(sizeof(double)*ldc*M, 128);
@@ -45,6 +52,8 @@ void test_sw_dgemm_Atrans_std(int M, int N, int K) {
   double* A = (double*)malloc(sizeof(double)*K*lda);
   double* B = (double*)malloc(sizeof(double)*K*ldb);
 #endif
+
+  printf("FINISH malloc\n");
 
   srand((unsigned int) time(NULL));
   for(i=0; i < K*lda; i++){
@@ -66,8 +75,8 @@ void test_sw_dgemm_Atrans_std(int M, int N, int K) {
   printf("no TIME compute part\n");
 #endif
 
-  double alpha = 1.0;
-  double beta = 0.0;
+  double alpha = -1.0;
+  double beta = 1.0;
   gettimeofday(&t1, NULL);
   //cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K, alpha, A, K, B, N, beta, C, N);
   //cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, M, N, K, alpha, A, M, B, N, beta, C, N);
