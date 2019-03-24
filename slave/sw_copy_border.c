@@ -263,6 +263,8 @@ void copy_border_float32(CopyData* params)
         //const int Ms, const int Ns, const int Me, const int Ne)
 void copy_border_double64(CopyData* params)
 {
+    const int MAX_COPY_DOUBLE = 7168;
+
     double* src = (double*)(params->src);
     double* dst = (double*)(params->dst);
     const int M = params->M;
@@ -271,14 +273,18 @@ void copy_border_double64(CopyData* params)
     const int Ns = params->Ns;
     const int Me = params->Me;
     const int Ne = params->Ne;
+    const int blkM = params->blkM;
+    const int blkN = params->blkN;
     const int trans = params->trans;
     const int ldx = params->ldx;
     const int id = athread_get_id(-1);
     const int cid = id%8, rid = id/8;
 
-    //if(id == 0) 
-    //    printf("M=%d, Ms=%d, Me=%d, N=%d, Ns=%d, Ne=%d, trans=%d, ldx=%d\n", M,Ms,Me,N,Ns,Ne,trans,ldx);
-    //athread_syn(ARRAY_SCOPE, 0xffff);
+    if(id == 0){ 
+        printf("M=%d, Ms=%d, Me=%d, N=%d, Ns=%d, Ne=%d, trans=%d, ldx=%d\n", M,Ms,Me,N,Ns,Ne,trans,ldx);
+        printf("blkM=%d, blkN=%d\n", blkM, blkN);
+    }
+    athread_syn(ARRAY_SCOPE, 0xffff);
 
     if(Ms%32 != 0 || Ns%32 != 0)
     {
@@ -301,12 +307,14 @@ void copy_border_double64(CopyData* params)
             if(Ns >= Ne)
                 return;
             int i = 0, j = 0;
-            double* buf = (double*)ldm_malloc(sizeof(double)*Me);
+            int ii = 0;
+            //double* buf = (double*)ldm_malloc(sizeof(double)*Me);
+            double* buf = (double*)ldm_malloc(sizeof(double)*blkM);
             double* start;
-            dma_set_size(&dma_src, sizeof(double)*M);
+            dma_set_size(&dma_src, sizeof(double)*blkM);
             dma_set_bsize(&dma_src, 0);
             dma_set_stepsize(&dma_src, 0);
-            dma_set_size(&dma_dst, sizeof(double)*Me);
+            dma_set_size(&dma_dst, sizeof(double)*blkM);
             dma_set_bsize(&dma_dst, 0);
             dma_set_stepsize(&dma_dst, 0);
 
@@ -314,27 +322,44 @@ void copy_border_double64(CopyData* params)
             {
                 if(Ns+j < N)
                 {
+                  for (ii = 0; ii < Me; ii+=blkM) {
                     //copy Ns+j column
-                    start = &src[(Ns+j)*ldx];
+                    start = &src[(Ns+j)*ldx+ii];
+                    if (ii == Ms)
+                        dma_set_size(&dma_src, sizeof(double)*(M-Ms));
+                    else
+                        dma_set_size(&dma_src, sizeof(double)*blkM);
                     dma(dma_src, (long)start, (long)buf);
-                    for(i = M; i < Me; i ++)
-                        buf[i] = 0.0;
+                    if (ii == Ms) {
+                        for(i = M; i < Me; i ++)
+                            buf[i-Ms] = 0.0;
+                    }
                     dma_wait(&reply_src, 1);
                     reply_src = 0;
+
+                    //store
+                    start = &dst[(Ns+j)*Me+ii];
+                    dma(dma_dst, (long)start, (long)buf);
+                    dma_wait(&reply_dst, 1);
+                    reply_dst = 0;
+                  }
                 }
                 else
                 {
-                    for(i = 0; i < Me; i ++)
+                    for(i = 0; i < blkM; i ++)
                         buf[i] = 0.0;
+
+                  for (ii = 0; ii < Me; ii+=blkM) {
+                    //store
+                    start = &dst[(Ns+j)*Me+ii];
+                    dma(dma_dst, (long)start, (long)buf);
+                    dma_wait(&reply_dst, 1);
+                    reply_dst = 0;
+                  }
                 }
-                //store
-                start = &dst[(Ns+j)*Me];
-                dma(dma_dst, (long)start, (long)buf);
-                dma_wait(&reply_dst, 1);
-                reply_dst = 0;
             }
 
-            ldm_free(buf, sizeof(double)*Me);
+            ldm_free(buf, sizeof(double)*blkM);
         }
         else //copy the bottom panel
         {
@@ -492,12 +517,13 @@ void copy_border_double64(CopyData* params)
                 return;
             int offset_id = id - 32;
             int i, j, k;
-            double* buf = (double*)ldm_malloc(sizeof(double) * Ne);
+            int ii = 0;
+            double* buf = (double*)ldm_malloc(sizeof(double) * blkN);
             double* start;
-            dma_set_size(&dma_src, sizeof(double)*N);
+            dma_set_size(&dma_src, sizeof(double)*blkN);
             dma_set_bsize(&dma_src, 0);
             dma_set_stepsize(&dma_src, 0);
-            dma_set_size(&dma_dst, sizeof(double)*Ne);
+            dma_set_size(&dma_dst, sizeof(double)*blkN);
             dma_set_bsize(&dma_dst, 0);
             dma_set_stepsize(&dma_dst, 0);
 
@@ -506,27 +532,42 @@ void copy_border_double64(CopyData* params)
                 //read
                 if(Ms+i < M)
                 {
-                    start = &src[(Ms+i)*ldx];
+                  for (ii = 0; ii < Ne; ii+=blkN){
+                    start = &src[(Ms+i)*ldx+ii];
+                    if (ii == Ns)
+                        dma_set_size(&dma_src, sizeof(double)*(N-Ns));
+                    else
+                        dma_set_size(&dma_src, sizeof(double)*blkN);
                     dma(dma_src, (long)start, (long)buf );
-                    for(j = N; j < Ne; j ++)
-                        buf[j] = 0.0;
+                    if (ii == Ns){
+                        for(j = N; j < Ne; j ++)
+                            buf[j-Ns] = 0.0;
+                    }
                     dma_wait(&reply_src, 1);
                     reply_src = 0;
+
+                    //store
+                    start = &dst[(Ms+i)*Ne+ii];
+                    dma(dma_dst, (long)start, (long)buf);
+                    dma_wait(&reply_dst, 1);
+                    reply_dst = 0;
+                  }
                 }
                 else
                 {
-                    for(j = 0;j < Ne; j ++)
+                    for(j = 0;j < blkN; j ++)
                         buf[j] = 0.0;
+                  for (ii = 0; ii < Ne; ii+=blkN){
+                     //store
+                    start = &dst[(Ms+i)*Ne+ii];
+                    dma(dma_dst, (long)start, (long)buf);
+                    dma_wait(&reply_dst, 1);
+                    reply_dst = 0;
+                  }
                 }
-
-                //store
-                start = &dst[(Ms+i)*Ne];
-                dma(dma_dst, (long)start, (long)buf);
-                dma_wait(&reply_dst, 1);
-                reply_dst = 0;
             }
 
-            ldm_free(buf, sizeof(double) * Ne);
+            ldm_free(buf, sizeof(double) * blkN);
 
         }
     }
