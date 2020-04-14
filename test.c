@@ -21,6 +21,128 @@
  * check the correctness with cblas interface
  * currently support Trans, NoTrans case 
  * *******/
+void test_sw_dgemm_Atrans_std(int M, int N, int K) {
+  int i;
+  int cM, cN, cK, cT;
+  struct timeval t1, t2;
+  int ld = 16;
+  int M2 = M + ld;
+  int N2 = N + ld;
+  int K2 = K + ld;
+
+  //M = 72;
+  //N = 7680;
+  //K = 512;
+
+  int lda = 9940;
+  int ldb = 9940;
+  int ldc = 9940;
+
+  printf("m=%d, n=%d, k=%d, lda=%d, ldb=%d, ldc=%d\n", M,N,K,lda,ldb,ldc);
+
+#undef _MEM_128BALIGN_
+#ifdef _MEM_128BALIGN_
+  double* C = (double*)_aligned_malloc(sizeof(double)*ldc*M, 128);
+  double* C_blas = (double*)_aligned_malloc(sizeof(double)*ldc*M, 128);
+  double* A = (double*)_aligned_malloc(sizeof(double)*K*lda, 128);
+  double* B = (double*)_aligned_malloc(sizeof(double)*K*ldb, 128);
+#else
+  double* C = (double*)malloc(sizeof(double)*ldc*M);
+  double* C_blas = (double*)malloc(sizeof(double)*ldc*M);
+  double* A = (double*)malloc(sizeof(double)*K*lda);
+  double* B = (double*)malloc(sizeof(double)*K*ldb);
+#endif
+
+  printf("FINISH malloc\n");
+
+  srand((unsigned int) time(NULL));
+  for(i=0; i < K*lda; i++){
+    A[i] = 1.0 + i%100*0.01; //rand()*1.0/RAND_MAX;
+  }
+  for(i=0; i < K*ldb; i++){
+    B[i] = 1.0 + i%100*0.01; //rand()*1.0/RAND_MAX;
+  }
+  for(i=0; i < M*ldc; i++){
+    C[i] = 1.0 + i%100*0.01;
+    C_blas[i] = C[i];
+  }
+  double gflop = (double)2*K/1024*N/1024*M/1024;
+
+  //(M*T, K) * (K, N)
+#ifdef USE_COMP
+  printf("TIME compute part\n");
+#else
+  printf("no TIME compute part\n");
+#endif
+
+  double alpha = -1.0;
+  double beta = 1.0;
+  gettimeofday(&t1, NULL);
+  //cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K, alpha, A, K, B, N, beta, C, N);
+  //cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, M, N, K, alpha, A, M, B, N, beta, C, N);
+  char TRANSA = 'N';
+  char TRANSB = 'T';
+  //sgemm_(&TRANSA, &TRANSB, &N, &M, &K, &alpha, B, &N, A, &M, &beta, C, &N);
+  cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, N, M, K, alpha, B, ldb, A, lda, beta, C, ldc);
+  //sw_cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc);
+
+  gettimeofday(&t2, NULL);
+  double tt = TIME(t1,t2);
+  double gflops = gflop / tt;
+  printf("xMath gflops is %.2lf time %lf sec\n", gflops, tt);
+
+  gettimeofday(&t1, NULL);
+  //sw_cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K, alpha, A, M, B, N, beta, C_blas, N);
+  sw_cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, M, N, K, alpha, A, lda, B, ldb, beta, C_blas, ldc);
+  gettimeofday(&t2, NULL);
+  tt = TIME(t1,t2);
+  gflops = gflop / tt;
+  printf("dgemm gflops is %.2lf time %lf sec\n", gflops, tt);
+
+  printf("check res\n");
+#ifdef CHECK_RES
+  int cnt = 0;
+  long double sum1 = 0., sum2 = 0.;
+  cnt = 0;
+  printf("C length : %d\n", N*M);
+
+  int ii, j;
+  for(i = 0; i < M; ++i) for(j = 0; j < N; j++) {
+    ii = i*ldc + j;
+    //printf("now %d\n", i);
+    //printf("now cblas %.1f xmath %f\n", C_blas[i], C[i]);
+    if(fabs(C[ii] - C_blas[ii]) > 1e-3) {
+      //if(cnt < 1000) 
+        printf("error @ (%d %d), %lf vs %lf\n", i, j, C[ii], C_blas[ii]);
+      cnt++;
+    }
+    sum1 += C[ii];
+    sum2 += C_blas[ii];
+  }
+  printf("pass validation test! xmath sum1: %.2lf dgemm sum2: %.2lf, error_cnt: %d\n", sum1, sum2, cnt);
+  fflush(stdout);
+#endif
+
+#ifdef _MEM_128BALIGN_
+  _aligned_free(A);
+  _aligned_free(B);
+  _aligned_free(C);
+  _aligned_free(C_blas);
+  //_aligned_free(Ap);
+  //_aligned_free(Bp);
+  //_aligned_free(Cp);
+#else
+  free(A);
+  free(B);
+  free(C);
+  free(C_blas);
+  //free(Ap);
+  //free(Bp);
+  //free(Cp);
+#endif
+  return;
+}
+
 void test_sw_sgemm_Atrans_std(int M, int N, int K) {
   int i;
   int cM, cN, cK, cT;
@@ -52,7 +174,7 @@ void test_sw_sgemm_Atrans_std(int M, int N, int K) {
   }
   for(i=0; i < N*M; i++){
     C[i] = 0.0;
-    C_blas[i] = 0.0;
+    C_blas[i] = 1.0;
   }
   double gflop = (double)2*K/1024*N/1024*M/1024;
 
@@ -66,14 +188,21 @@ void test_sw_sgemm_Atrans_std(int M, int N, int K) {
   double alpha = 1.0;
   double beta = 0.0;
   gettimeofday(&t1, NULL);
-  cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K, alpha, A, K, B, N, beta, C, N);
+  //cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K, alpha, A, K, B, N, beta, C, N);
+  //cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, M, N, K, alpha, A, M, B, N, beta, C, N);
+  char TRANSA = 'N';
+  char TRANSB = 'T';
+  //sgemm_(&TRANSA, &TRANSB, &N, &M, &K, &alpha, B, &N, A, &M, &beta, C, &N);
+  cblas_sgemm(CblasColMajor, CblasNoTrans, CblasTrans, N, M, K, alpha, B, N, A, M, beta, C, N);
+
   gettimeofday(&t2, NULL);
   double tt = TIME(t1,t2);
   double gflops = gflop / tt;
   printf("xMath gflops is %.2lf time %lf sec\n", gflops, tt);
 
   gettimeofday(&t1, NULL);
-  sw_cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K, alpha, A, M, B, N, beta, C_blas, N);
+  //sw_cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K, alpha, A, M, B, N, beta, C_blas, N);
+  sw_cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, M, N, K, alpha, A, M, B, N, beta, C_blas, N);
   gettimeofday(&t2, NULL);
   tt = TIME(t1,t2);
   gflops = gflop / tt;
@@ -95,7 +224,7 @@ void test_sw_sgemm_Atrans_std(int M, int N, int K) {
     sum1 += C[i];
     sum2 += C_blas[i];
   }
-  printf("pass validation test! swblas sum1: %.2lf xmath sum2: %.2lf\n", sum1, sum2);
+  printf("pass validation test! xmath sum1: %.2lf sgemm sum2: %.2lf\n", sum1, sum2);
   fflush(stdout);
 #endif
 
@@ -176,7 +305,7 @@ void test_sw_sgemm_Anotrans_std(int M, int N, int K) {
   printf("xMath gflops is %.2lf time %lf sec\n", gflops, tt);
 
   gettimeofday(&t1, NULL);
-  sw_cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K, alpha, A, M, B, N, beta, C_blas, N);
+  sw_cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K, alpha, A, K, B, N, beta, C_blas, N);
   gettimeofday(&t2, NULL);
   tt = TIME(t1,t2);
   gflops = gflop / tt;
@@ -309,8 +438,9 @@ int main(int argc, char **argv) {
   K = atoi(argv[2]);
   N = atoi(argv[3]);
   //test_sw_sgemm_small(M, N, K);
-  test_sw_sgemm_Anotrans_std(M, N, K);
+  //test_sw_sgemm_Anotrans_std(M, N, K);
   //test_sw_sgemm_Atrans_std(M, N, K);
   //test_sw_sgemm_Atrans_nopad_std(M, N, K);
+  test_sw_dgemm_Atrans_std(M, N, K);
   return 0;
 }
