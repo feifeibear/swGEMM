@@ -40,18 +40,13 @@ typedef struct ConvData_st{
   int M, blkM;
   //old var
   int Ni, No, B, T;
-  // add leading dimension
-  int ldi, ldw, ldo;
 } ConvData;
 
 typedef struct CopyData{
     void* src;
     void* dst;
     int M, N, Ms, Ns, Me, Ne;
-    int blkM, blkN;
     int trans;
-    // add leading dimension
-    int ldx;
 }CopyData;
 
 typedef struct ZeropadStruct_st {
@@ -66,7 +61,6 @@ typedef struct ZeropadStruct_st {
 #define MIN(x,y) (x>y?y:x)
 #define MAX(x,y) (x>y?x:y)
 #define TIME(a,b) (1.0*((b).tv_sec-(a).tv_sec)+0.000001*((b).tv_usec-(a).tv_usec))
-#define ALIGNED(addr) ((((unsigned long)(addr)>>5)+1)<<5)
 #define TEST_STEPS 1
 
 #endif

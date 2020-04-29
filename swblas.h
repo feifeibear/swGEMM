@@ -28,13 +28,6 @@ void sw_cblas_sgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE Tra
                  const float beta, float *C, const int ldc);
 
 
-void sw_cblas_dgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA,
-                 const enum CBLAS_TRANSPOSE TransB, const int M, const int N,
-                 const int K, const double alpha, const double *A,
-                 const int lda, const double *B, const int ldb,
-                 const double beta, double *C, const int ldc);
-
-
 void sw_blas_init();
 void sw_blas_stop();
 void *_aligned_malloc(size_t size, size_t align_size);
