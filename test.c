@@ -15,11 +15,10 @@
 
 #define TIME(a,b) (1.0*((b).tv_sec-(a).tv_sec)+0.000001*((b).tv_usec-(a).tv_usec))
 
-
 /*********
  * A standard interface unitest function
  * check the correctness with cblas interface
- * currently support Trans, NoTrans case 
+ * currently support Trans, NoTrans case
  * *******/
 void test_sw_dgemm_Atrans_std(int M, int N, int K) {
   int i;
@@ -112,7 +111,7 @@ void test_sw_dgemm_Atrans_std(int M, int N, int K) {
     //printf("now %d\n", i);
     //printf("now cblas %.1f xmath %f\n", C_blas[i], C[i]);
     if(fabs(C[ii] - C_blas[ii]) > 1e-3) {
-      //if(cnt < 1000) 
+      //if(cnt < 1000)
         printf("error @ (%d %d), %lf vs %lf\n", i, j, C[ii], C_blas[ii]);
       cnt++;
     }
